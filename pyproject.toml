@@ -1,0 +1,30 @@
+[project]
+name = "docker-learn"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Muhammad Abdullah", email = "callmeab1182002@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "alembic>=1.19.1",
+    "bcrypt==4.0.1",
+    "email-validator>=2.3.0",
+    "fastapi>=0.141.1",
+    "passlib[bcrypt]==1.7.4",
+    "psycopg[binary]>=3.3.4",
+    "pydantic-settings>=2.15.0",
+    "python-jose[cryptography]>=3.5.0",
+    "sqlalchemy>=2.0.52",
+    "uvicorn>=0.52.4",
+    "supabase>=2.4.0",
+    "python-dotenv==1.0.0", 
+]
+
+[project.scripts]
+docker-learn = "docker_learn:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"
