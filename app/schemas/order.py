@@ -47,7 +47,6 @@ class OrderCreate(BaseModel):
     def validate_items(cls, value):
         if not value:
             raise ValueError("Order must have at least 1 item")
-        # Check for duplicate products
         product_ids = [item.product_id for item in value]
         if len(product_ids) != len(set(product_ids)):
             raise ValueError("Duplicate products in order")

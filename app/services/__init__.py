@@ -30,6 +30,17 @@ from .supplier_service import (
     update_supplier,
     deactivate_supplier,
 )
+from .order_service import (
+    place_order,
+    get_order_by_id,
+    get_customer_orders,
+    get_all_orders,
+    update_order_status,
+    cancel_order,
+    get_order_with_items,
+    get_customer_order_total,
+    get_order_items,
+)
 
 __all__ = [
     "create_user",
@@ -57,4 +68,13 @@ __all__ = [
     "get_all_suppliers",
     "update_supplier",
     "deactivate_supplier",
+    "place_order",
+    "get_order_by_id",
+    "get_customer_orders",
+    "get_all_orders",
+    "update_order_status",
+    "cancel_order",
+    "get_order_with_items",
+    "get_customer_order_total",
+    "get_order_items",
 ]

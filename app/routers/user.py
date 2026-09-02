@@ -3,17 +3,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
 from app.schemas.user import UserResponse, UserPatch, UserUpdate
-from app.schemas.auth import UserCreate, UserLogin, Token, Refresh_Token
-from app.services.auth import create_user, authenticate_user
 from app.models.users import User
 from app.dependencies.auth import get_current_user
-from app.core.security import get_token_from_header
 from app.core.supabase_client import supabase_service
 import logging
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.services.token_service import rotate_refresh_token
 from app.models.sessions import UserSession
-from datetime import datetime, timezone
 
 
 logger = logging.getLogger(__name__)
@@ -89,56 +84,6 @@ def delete_account(current_user: User = Depends(get_current_user),db: Session = 
         logger.error(f"User deletion failed: {str(e)}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="Failed to delete account")
 
-@router.post("/refresh", response_model=Refresh_Token)
-def refresh_access_token(credentials: HTTPAuthorizationCredentials = Depends(security),
-    request: Request = None,db: Session = Depends(get_db)):
-    
-    if credentials is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Missing authorization header")
-    
-    old_refresh_token = credentials.credentials
-    
-    try:
-        response = supabase_service.auth.refresh_session(old_refresh_token)
-        
-        if not response or not response.session:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid or expired refresh token")
-        
-        user_id = response.user.id
-        new_access_token = response.session.access_token
-        new_refresh_token = response.session.refresh_token
-        
-        logger.info(f"Token refreshed for user: {user_id}")
-        
-        try:
-            ip_address = request.client.host if request and request.client else None
-            user_agent = request.headers.get("user-agent") if request else None
-            
-            rotate_refresh_token(
-                user_id=user_id,
-                old_refresh_token=old_refresh_token,
-                new_refresh_token=new_refresh_token,
-                user_agent=user_agent,
-                ip_address=ip_address,
-                db=db
-            )
-            logger.info(f"Token rotation completed for user: {user_id}")
-        except Exception as e:
-            logger.warning(f"Token rotation failed (non-critical): {str(e)}")
-        
-        return {
-            "access_token": new_access_token,
-            "token_type": "bearer"
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Token refresh failed: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Failed to refresh token"
-        )
         
 @router.get("/sessions")
 def get_active_sessions(current_user: User = Depends(get_current_user),db: Session = Depends(get_db)):

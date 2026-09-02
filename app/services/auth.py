@@ -154,7 +154,6 @@ def authenticate_user(user_data: UserLogin, request: Request, db: Session):
     except SQLAlchemyError as e:
         db.rollback()
         logger.warning(f"Session creation failed (non-critical): {str(e)}")
-        # Don't fail auth if session creation fails
     
     try:
         user.last_login_at = datetime.now(timezone.utc)
@@ -169,3 +168,32 @@ def authenticate_user(user_data: UserLogin, request: Request, db: Session):
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
+    
+def refresh_access_token(old_refresh_token: str, db: Session) -> dict:
+
+    session = db.query(UserSession).filter(UserSession.refresh_token_hash == old_refresh_token).first()
+
+    if not session:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown refresh token")
+
+    if session.revoked_at is not None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token has been revoked")
+
+    if session.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired")
+
+    try:
+        response = supabase_service.auth.refresh_session(old_refresh_token)
+
+        if not response or not response.session:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
+
+        logger.info(f"Access token refreshed for user: {session.user_id}")
+
+        return {"access_token": response.session.access_token,"token_type": "bearer"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Token refresh failed: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Failed to refresh token")

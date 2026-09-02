@@ -4,14 +4,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.database import get_db
 from app.schemas.user import UserResponse, UserPatch, UserUpdate
 from app.schemas.auth import UserCreate, UserLogin, Token, Refresh_Token
-from app.services.auth import create_user, authenticate_user
+from app.services.auth import create_user, authenticate_user ,refresh_access_token
 from app.models.users import User
 from app.dependencies.auth import get_current_user
 from app.core.security import get_token_from_header
 from app.core.supabase_client import supabase_service
 import logging
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from app.services.token_service import rotate_refresh_token
 from app.models.sessions import UserSession
 from datetime import datetime, timezone
 
@@ -74,4 +73,9 @@ def logout_all_devices(current_user: User = Depends(get_current_user),db: Sessio
         )
         
         
-        
+@router.post("/refresh", response_model=Refresh_Token)
+def refresh(credentials: HTTPAuthorizationCredentials = Depends(security),db: Session = Depends(get_db)):
+    if credentials is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing authorization header")
+
+    return refresh_access_token(credentials.credentials, db)

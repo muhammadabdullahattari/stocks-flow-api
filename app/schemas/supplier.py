@@ -26,7 +26,6 @@ class SupplierBase(BaseModel):
     @classmethod
     def validate_phone(cls, value: Optional[str]) -> Optional[str]:
         if value:
-            # Remove spaces and special chars, keep only digits and +
             cleaned = ''.join(c for c in value if c.isdigit() or c == '+')
             if len(cleaned) < 7:
                 raise ValueError("Invalid phone number")

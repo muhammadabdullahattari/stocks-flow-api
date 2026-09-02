@@ -8,9 +8,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-def rotate_refresh_token(
-    user_id: UUID,old_refresh_token: str,new_refresh_token: str,user_agent: str | None,ip_address: str | None,db: Session) -> UserSession:
+def rotate_refresh_token(user_id: UUID,old_refresh_token: str,new_refresh_token: str,
+                         user_agent: str | None,ip_address: str | None,db: Session) -> UserSession:
 
     try:
         old_session = db.query(UserSession).filter(
