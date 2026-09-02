@@ -5,6 +5,7 @@ from app.routers.category import router as Categoryrouter
 from app.routers.inventory import router as Inventoryrouter
 from app.routers.product import router as Productrouter
 from app.routers.supplier import router as Supplierrouter
+from app.routers.order import router as Orderrouter
 from app.database import Base,engine
 import app.models
 from fastapi.exceptions import RequestValidationError, HTTPException 
@@ -27,6 +28,7 @@ app.include_router(Categoryrouter)
 app.include_router(Inventoryrouter)
 app.include_router(Productrouter)
 app.include_router(Supplierrouter)
+app.include_router(Orderrouter)
 
 @app.get("/")
 def root():
