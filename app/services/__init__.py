@@ -41,6 +41,17 @@ from .order_service import (
     get_customer_order_total,
     get_order_items,
 )
+from .purchase_order_service import (
+    create_purchase_order,
+    get_purchase_order_by_id,
+    get_all_purchase_orders,
+    update_purchase_order,
+    update_po_status,
+    receive_po_item,
+    cancel_purchase_order,
+    get_po_items,
+    get_pending_shipments,
+)
 
 __all__ = [
     "create_user",
@@ -77,4 +88,13 @@ __all__ = [
     "get_order_with_items",
     "get_customer_order_total",
     "get_order_items",
+    "create_purchase_order",
+    "get_purchase_order_by_id",
+    "get_all_purchase_orders",
+    "update_purchase_order",
+    "update_po_status",
+    "receive_po_item",
+    "cancel_purchase_order",
+    "get_po_items",
+    "get_pending_shipments"
 ]

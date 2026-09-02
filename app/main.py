@@ -6,13 +6,14 @@ from app.routers.inventory import router as Inventoryrouter
 from app.routers.product import router as Productrouter
 from app.routers.supplier import router as Supplierrouter
 from app.routers.order import router as Orderrouter
+from app.routers.purchase_order import router as PurchaseOrderrouter
 from app.database import Base,engine
 import app.models
 from fastapi.exceptions import RequestValidationError, HTTPException 
 from app.exceptions.handlers import http_exception_handler, validation_exception_handler, general_exception_handler
 from app.core.startup import startup_event
 
-app = FastAPI()
+app = FastAPI(title="StockFlow API")
 
 @app.on_event("startup")
 async def on_startup():
@@ -29,6 +30,7 @@ app.include_router(Inventoryrouter)
 app.include_router(Productrouter)
 app.include_router(Supplierrouter)
 app.include_router(Orderrouter)
+app.include_router(PurchaseOrderrouter)
 
 @app.get("/")
 def root():

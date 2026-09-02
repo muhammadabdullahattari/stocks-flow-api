@@ -88,3 +88,17 @@ class PurchaseOrderListResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+    
+class ReceiveStockRequest(BaseModel):
+    quantity_received: int = Field(gt=0, description="Quantity to receive")
+
+
+class ReceiveStockResponse(BaseModel):
+    po_item_id: UUID
+    product_name: str
+    quantity_ordered: int
+    quantity_received: int
+    quantity_pending: int
+    received_at: str
+
+    model_config = {"from_attributes": True}
