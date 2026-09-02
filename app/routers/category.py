@@ -42,7 +42,6 @@ def update_existing_category(category_id: UUID,category_data: CategoryUpdate,cur
     category = update_category(db, category_id, category_data)
     return CategoryResponse.model_validate(category)
 
-
 @router.delete("/{category_id}",status_code=status.HTTP_204_NO_CONTENT,summary="Delete Category",description="Delete a category (BUSINESS only)")
 def delete_existing_category(category_id: UUID,current_user: User = Depends(get_current_business_user),db: Session = Depends(get_db)):
 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
-
+from typing import Literal
 
 class UserCreate(BaseModel):
     first_name: str = Field(min_length=2,max_length=100)
@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     username: str = Field(min_length=3,max_length=30)
     email: EmailStr
     password: str = Field(min_length=8,max_length=128)
+    role: Literal["CUSTOMER", "BUSINESS"] = Field(default="CUSTOMER OR BUSINESS",description="Select user type: CUSTOMER for shopping, BUSINESS for selling")
 
     @field_validator("first_name", "last_name")
     @classmethod
@@ -50,6 +51,14 @@ class UserCreate(BaseModel):
         if not any(not char.isalnum() for char in value):
             raise ValueError("Password must contain at least one special character")
 
+        return value
+    
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, value: str) -> str:
+        valid_roles = ["CUSTOMER", "BUSINESS"]
+        if value not in valid_roles:
+            raise ValueError(f"Role must be one of {valid_roles}")
         return value
     
 class UserLogin(BaseModel):

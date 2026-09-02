@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from app.models.users import User
 from app.schemas.auth import UserCreate, UserLogin
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password, verify_password , hash_token
 from app.core.supabase_client import supabase_service
 from app.models.sessions import UserSession
 from fastapi import HTTPException, status, Request
@@ -30,10 +30,10 @@ def create_user(db: Session, user_data: UserCreate):
         auth_response = supabase_service.auth.admin.create_user({
             "email":user_data.email,
             "password":user_data.password,
-            "email_confirm":False,
+            "email_confirm":True,
             "user_metadata":{
                 "username": user_data.username,
-                "name": user_data.first_name + user_data.last_name}})
+                "name": f"{user_data.first_name} {user_data.last_name}"}})
         
         supabase_user_id = auth_response.user.id
         logger.info(f"User created in Supabase Auth: {supabase_user_id}")
@@ -49,11 +49,13 @@ def create_user(db: Session, user_data: UserCreate):
     user = User(
         id=UUID(supabase_user_id),
         username=user_data.username,
-        name=user_data.first_name + user_data.last_name,
+        name=f"{user_data.first_name} {user_data.last_name}",
+        first_name=user_data.first_name,
+        last_name=user_data.last_name,
         email=user_data.email,
-        role="CUSTOMER",  
+        role=user_data.role,  
         is_active=True,
-        is_verified=False,
+        is_verified=True,
         email_verified_at=None
     )
     
@@ -141,7 +143,7 @@ def authenticate_user(user_data: UserLogin, request: Request, db: Session):
         
         session = UserSession(
             user_id=user.id,
-            refresh_token_hash=refresh_token,  
+            refresh_token_hash= hash_token(refresh_token),  
             user_agent=user_agent,
             ip_address=ip_address,
             expires_at=refresh_expires_at
@@ -171,7 +173,7 @@ def authenticate_user(user_data: UserLogin, request: Request, db: Session):
     
 def refresh_access_token(old_refresh_token: str, db: Session) -> dict:
 
-    session = db.query(UserSession).filter(UserSession.refresh_token_hash == old_refresh_token).first()
+    session = db.query(UserSession).filter(UserSession.refresh_token_hash == hash_token(old_refresh_token)).first()
 
     if not session:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unknown refresh token")

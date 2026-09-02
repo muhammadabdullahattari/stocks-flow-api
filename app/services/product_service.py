@@ -9,23 +9,29 @@ from app.services.category_service import get_category_by_id
 from fastapi import HTTPException, status
 from decimal import Decimal
 import logging
+import random
+import string
 
 logger = logging.getLogger(__name__)
 
+def generate_sku(category: Category, name: str) -> str:
+    category_part = "".join(c for c in category.name.upper() if c.isalnum())[:3]
+    name_part = "".join(c for c in name.upper() if c.isalnum())[:3]
+    random_part = "".join(random.choices(string.digits, k=5))
+    return f"{category_part}-{name_part}-{random_part}"
 
 def create_product(db: Session,product_data: ProductCreate,user_id: UUID) -> Product:
     try:
-        get_category_by_id(db, product_data.category_id)
-        
-        existing = db.query(Product).filter(Product.sku == product_data.sku).first()
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,detail=f"Product with SKU '{product_data.sku}' already exists")
+        category = get_category_by_id(db, product_data.category_id)
         
         if product_data.price <= product_data.cost:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Selling price must be greater than cost price")
         
-        product = Product(**product_data.model_dump(),created_by=user_id)
+        sku = generate_sku(category, product_data.name)
+        while db.query(Product).filter(Product.sku == sku).first():
+            sku = generate_sku(category, product_data.name)
+        
+        product = Product(**product_data.model_dump(),sku=sku,created_by=user_id)
         db.add(product)
         db.flush()
         

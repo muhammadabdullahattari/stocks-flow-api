@@ -5,7 +5,6 @@ from datetime import datetime
 
 class CategoryBase(BaseModel):
     name: str = Field(min_length=2, max_length=100, description="Category name")
-    slug: str = Field(min_length=2, max_length=100, description="URL-friendly slug")
     description: Optional[str] = Field(None, max_length=500)
     is_active: bool = Field(default=True)
 
@@ -16,15 +15,6 @@ class CategoryBase(BaseModel):
         if not value:
             raise ValueError("Category name cannot be empty")
         return value
-
-    @field_validator("slug")
-    @classmethod
-    def validate_slug(cls, value: str) -> str:
-        value = value.strip().lower()
-        if not value.replace("-", "").replace("_", "").isalnum():
-            raise ValueError("Slug can only contain letters, numbers, hyphens, and underscores")
-        return value
-
 
 class CategoryCreate(CategoryBase):
     pass

@@ -6,10 +6,14 @@ from fastapi import HTTPException, status
 from typing import Optional
 import logging
 from app.core.supabase_client import supabase
+import hashlib
 
 logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
+
+def hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)

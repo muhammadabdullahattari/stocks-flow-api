@@ -4,10 +4,8 @@ from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
 
-
 class ProductBase(BaseModel):
     name: str = Field(min_length=2, max_length=200)
-    sku: str = Field(min_length=2, max_length=50, description="Stock Keeping Unit")
     description: Optional[str] = Field(None, max_length=1000)
     price: Decimal = Field(gt=0, decimal_places=2, description="Selling price")
     cost: Decimal = Field(ge=0, decimal_places=2, description="Cost price")
@@ -19,11 +17,6 @@ class ProductBase(BaseModel):
     @classmethod
     def validate_name(cls, value: str) -> str:
         return value.strip()
-
-    @field_validator("sku")
-    @classmethod
-    def validate_sku(cls, value: str) -> str:
-        return value.strip().upper()
 
     @field_validator("price", "cost", mode="before")
     @classmethod

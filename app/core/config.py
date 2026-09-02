@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int
     REFRESH_TOKEN_EXPIRE_DAYS: int
     DEBUG: bool
-    
+    Test_DATABASE_URL : str
     SUPABASE_URL: str
     SUPABASE_KEY: str 
     SUPABASE_SERVICE_KEY: str  
