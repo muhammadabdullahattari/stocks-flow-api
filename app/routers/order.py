@@ -132,19 +132,19 @@ def get_my_order_stats(current_user: User = Depends(get_current_customer_user),d
     return stats
 
 
-@router.get("",response_model=dict,summary="List Orders (Smart Route)",description="List orders (redirects based on user role)",
-    include_in_schema=False)
-def get_orders_smart(current_user: User = Depends(get_current_user),db: Session = Depends(get_db),
-                     skip: int = Query(0, ge=0),limit: int = Query(100, ge=1, le=1000),status: str = Query(None)):
+# @router.get("",response_model=dict,summary="List Orders (Smart Route)",description="List orders (redirects based on user role)",
+#     include_in_schema=False)
+# def get_orders_smart(current_user: User = Depends(get_current_user),db: Session = Depends(get_db),
+#                      skip: int = Query(0, ge=0),limit: int = Query(100, ge=1, le=1000),status: str = Query(None)):
 
-    if current_user.role == "CUSTOMER":
-        result = get_customer_orders(db, current_user.id, skip, limit, status)
-    else:
-        result = get_all_orders(db, skip, limit, status)
+#     if current_user.role == "CUSTOMER":
+#         result = get_customer_orders(db, current_user.id, skip, limit, status)
+#     else:
+#         result = get_all_orders(db, skip, limit, status)
     
-    return {
-        "total": result["total"],
-        "items": [OrderListResponse.model_validate(order) for order in result["items"]],
-        "skip": result["skip"],
-        "limit": result["limit"]
-    }
+#     return {
+#         "total": result["total"],
+#         "items": [OrderListResponse.model_validate(order) for order in result["items"]],
+#         "skip": result["skip"],
+#         "limit": result["limit"]
+#     }

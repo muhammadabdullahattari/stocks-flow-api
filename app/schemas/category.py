@@ -21,9 +21,16 @@ class CategoryCreate(CategoryBase):
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=100)
-    slug: Optional[str] = Field(None, min_length=2, max_length=100)
     description: Optional[str] = Field(None, max_length=500)
     is_active: Optional[bool] = None
+    
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("Category name cannot be empty")
+        return value
 
 class CategoryResponse(CategoryBase):
     id: UUID

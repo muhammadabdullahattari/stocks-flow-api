@@ -7,17 +7,34 @@ from fastapi import HTTPException, status
 import logging
 
 logger = logging.getLogger(__name__)
-
-def create_supplier(db: Session,supplier_data: SupplierCreate,user_id: UUID) -> Supplier:
+        
+def create_supplier(db: Session, supplier_data: SupplierCreate, user_id: UUID) -> Supplier:
     try:
-        supplier = Supplier(**supplier_data.model_dump(),created_by=user_id)
+        existing = db.query(Supplier).filter(
+            (Supplier.email == supplier_data.email) |
+            (Supplier.phone == supplier_data.phone) |
+            (Supplier.name == supplier_data.name)
+        ).first()
+
+        if existing:
+            if existing.email == supplier_data.email:
+                detail = f"Supplier with email '{supplier_data.email}' already exists"
+            elif existing.phone == supplier_data.phone:
+                detail = f"Supplier with phone '{supplier_data.phone}' already exists"
+            else:
+                detail = f"Supplier with name '{supplier_data.name}' already exists"
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+        supplier = Supplier(**supplier_data.model_dump(), created_by=user_id)
         db.add(supplier)
         db.commit()
         db.refresh(supplier)
-        
+
         logger.info(f"Supplier created: {supplier.id}")
         return supplier
-        
+
+    except HTTPException:
+        raise
     except SQLAlchemyError as e:
         db.rollback()
         logger.error(f"Database error creating supplier: {str(e)}")

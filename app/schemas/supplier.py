@@ -21,15 +21,21 @@ class SupplierBase(BaseModel):
     @classmethod
     def validate_name(cls, value: str) -> str:
         return value.strip()
-
+    
     @field_validator("phone")
     @classmethod
-    def validate_phone(cls, value: Optional[str]) -> Optional[str]:
-        if value:
-            cleaned = ''.join(c for c in value if c.isdigit() or c == '+')
-            if len(cleaned) < 7:
-                raise ValueError("Invalid phone number")
-            return cleaned
+    def validate_phone_number(cls, value: str) -> str:
+        value = value.strip()
+
+        if not value.isdigit():
+            raise ValueError("Phone number must contain only digits")
+
+        if len(value) != 11:
+            raise ValueError("Phone number must contain exactly 11 digits")
+
+        if not value.startswith("03"):
+            raise ValueError("Phone number must start with 03")
+
         return value
 
 

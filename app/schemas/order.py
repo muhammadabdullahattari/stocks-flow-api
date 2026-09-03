@@ -63,13 +63,13 @@ class OrderResponse(OrderBase):
     order_number: str
     customer_id: UUID
     total_amount: Decimal
-    items: List[OrderItemResponse]
+    items: List[OrderItemResponse] = Field(alias="order_items")
     created_at: datetime
     updated_at: datetime
     delivered_at: Optional[datetime]
     cancelled_at: Optional[datetime]
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True , "populate_by_name": True}
 
 
 class OrderListResponse(BaseModel):

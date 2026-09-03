@@ -3,17 +3,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from fastapi.testclient import TestClient
 from uuid import uuid4
-
 from app.core.config import settings
 from app.database import Base, get_db
 from app.main import app
 from app.models.users import User
 from app.core.security import hash_password
-
-
-# ============================================================
-# TEST DATABASE
-# ============================================================
 
 @pytest.fixture(scope="session")
 def test_db_engine():
@@ -61,11 +55,6 @@ def db_session(test_db_engine):
         transaction.rollback()
         connection.close()
 
-
-# ============================================================
-# FASTAPI TEST CLIENT
-# ============================================================
-
 @pytest.fixture(scope="function")
 def test_client(db_session):
     """
@@ -83,11 +72,6 @@ def test_client(db_session):
     yield client
 
     app.dependency_overrides.clear()
-
-
-# ============================================================
-# TEST USER DATA
-# ============================================================
 
 @pytest.fixture
 def test_customer_data():
@@ -126,11 +110,6 @@ def test_business_data():
         "password": "BizPass123!",
         "role": "BUSINESS",
     }
-
-
-# ============================================================
-# TEST USERS
-# ============================================================
 
 @pytest.fixture
 def test_customer_user(db_session, test_customer_data):
@@ -189,10 +168,6 @@ def test_business_user(db_session, test_business_data):
 
     return user
 
-
-# ============================================================
-# AUTHENTICATION
-# ============================================================
 
 @pytest.fixture
 def customer_auth_headers(test_client, test_customer_data):
@@ -283,11 +258,6 @@ def business_auth_headers(test_client, test_business_data):
         "Authorization": f"Bearer {tokens['access_token']}"
     }
 
-
-# ============================================================
-# CATEGORY FACTORY
-# ============================================================
-
 @pytest.fixture
 def create_category(test_client, business_auth_headers):
 
@@ -327,11 +297,6 @@ def create_category(test_client, business_auth_headers):
         return response.json()
 
     return _create_category
-
-
-# ============================================================
-# PRODUCT FACTORY
-# ============================================================
 
 @pytest.fixture
 def create_product(
@@ -384,11 +349,6 @@ def create_product(
 
     return _create_product
 
-
-# ============================================================
-# SUPPLIER FACTORY
-# ============================================================
-
 @pytest.fixture
 def create_supplier(test_client, business_auth_headers):
 
@@ -430,11 +390,6 @@ def create_supplier(test_client, business_auth_headers):
         return response.json()
 
     return _create_supplier
-
-
-# ============================================================
-# PYTEST MARKERS
-# ============================================================
 
 def pytest_configure(config):
     config.addinivalue_line(

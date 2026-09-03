@@ -71,7 +71,7 @@ class PurchaseOrderResponse(PurchaseOrderBase):
     po_number: str
     created_by: UUID
     total_amount: Decimal
-    items: List[PurchaseOrderItemResponse]
+    items: List[PurchaseOrderItemResponse] = Field(validation_alias="purchase_order_items")
     actual_delivery_date: Optional[datetime]
     created_at: datetime
     updated_at: datetime

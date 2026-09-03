@@ -40,7 +40,6 @@ class ProductCreate(ProductBase):
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=2, max_length=200)
-    sku: Optional[str] = Field(None, min_length=2, max_length=50)
     description: Optional[str] = None
     price: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
     cost: Optional[Decimal] = Field(None, ge=0, decimal_places=2)

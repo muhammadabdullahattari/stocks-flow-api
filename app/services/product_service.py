@@ -54,7 +54,6 @@ def create_product(db: Session,product_data: ProductCreate,user_id: UUID) -> Pro
             detail="Failed to create product"
         )
 
-
 def get_product_by_id(db: Session, product_id: UUID, check_active: bool = False) -> Product:
     product = db.query(Product).filter(Product.id == product_id).first()
     
@@ -104,17 +103,12 @@ def update_product(db: Session,product_id: UUID,product_data: ProductUpdate,user
         
         if product_data.category_id:
             get_category_by_id(db, product_data.category_id)
-        
-        if product_data.sku and product_data.sku != product.sku:
-            existing = db.query(Product).filter(
-                Product.sku == product_data.sku,
-                Product.id != product_id
-            ).first()
-            if existing:
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=f"SKU '{product_data.sku}' already in use"
-                )
+            
+        update_data = product_data.model_dump(exclude_unset=True)
+
+        category = None
+        if "category_id" in update_data:
+            category = get_category_by_id(db, update_data["category_id"])
         
         price = product_data.price if product_data.price else product.price
         cost = product_data.cost if product_data.cost else product.cost
@@ -124,7 +118,20 @@ def update_product(db: Session,product_id: UUID,product_data: ProductUpdate,user
                 detail="Selling price must be greater than cost price"
             )
         
-        update_data = product_data.model_dump(exclude_unset=True)
+        name_changed = "name" in update_data and update_data["name"] != product.name
+        category_changed = "category_id" in update_data and update_data["category_id"] != product.category_id
+
+        if name_changed or category_changed:
+            new_name = update_data.get("name", product.name)
+            new_category = category if category else get_category_by_id(db, product.category_id)
+
+            sku = generate_sku(new_category, new_name)
+            while db.query(Product).filter(Product.sku == sku, Product.id != product_id).first():
+                sku = generate_sku(new_category, new_name)
+
+            update_data["sku"] = sku
+        
+
         for key, value in update_data.items():
             setattr(product, key, value)
         

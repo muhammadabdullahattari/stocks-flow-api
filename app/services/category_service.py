@@ -19,6 +19,11 @@ def generate_slug(name: str) -> str:
 
 def create_category(db: Session, category_data: CategoryCreate) -> Category:
     try:
+        
+        existing_name = db.query(Category).filter(Category.name == category_data.name).first()
+        if existing_name:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,detail=f"Category with name '{category_data.name}' already exists")
+        
         base_slug = generate_slug(category_data.name)
         slug = base_slug
         suffix = 1
@@ -67,24 +72,33 @@ def update_category(db: Session,category_id: UUID,category_data: CategoryUpdate)
     try:
         category = get_category_by_id(db, category_id)
         
-        if category_data.slug and category_data.slug != category.slug:
-            existing = db.query(Category).filter(
-                Category.slug == category_data.slug,
-                Category.id != category_id
-            ).first()
-            if existing:
+        update_data = category_data.model_dump(exclude_unset=True)
+
+        if "name" in update_data and update_data["name"] != category.name:
+            
+            existing_name = db.query(Category).filter(Category.name == update_data["name"],Category.id != category_id).first()
+            if existing_name:
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Slug '{category_data.slug}' already in use"
+                    detail=f"Category with name '{update_data['name']}' already exists"
                 )
-        
-        update_data = category_data.model_dump(exclude_unset=True)
+            
+            base_slug = generate_slug(update_data["name"])
+            slug = base_slug
+            suffix = 1
+
+            while db.query(Category).filter(Category.slug == slug,Category.id != category_id).first():
+                suffix += 1
+                slug = f"{base_slug}-{suffix}"
+
+            update_data["slug"] = slug
+            
         for key, value in update_data.items():
             setattr(category, key, value)
         
         db.commit()
         db.refresh(category)
-        
+    
         logger.info(f"Category updated: {category.id}")
         return category
         

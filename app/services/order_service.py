@@ -202,15 +202,24 @@ def get_customer_order_total(db: Session,customer_id: UUID) -> dict:
     total_orders = len(orders)
     pending_orders = 0
     delivered_orders = 0
+    cancelled_orders = 0
     
     for order in orders:
-        total_spent += order.total_amount
-        if order.status == "pending":
-            pending_orders += 1
-        elif order.status == "delivered":
-            delivered_orders += 1
+        
+        status = order.status
     
-    return {"total_orders": total_orders,"total_spent": float(total_spent),"pending_orders": pending_orders,"delivered_orders": delivered_orders}
+        if status == "pending":
+            pending_orders += 1
+        elif status == "delivered":
+            delivered_orders += 1
+        elif status == "cancelled":
+            cancelled_orders += 1
+            
+        if status != "cancelled":
+            total_spent += order.total_amount
+
+    
+    return {"total_orders": total_orders,"total_spent": float(total_spent),"pending_orders": pending_orders,"delivered_orders": delivered_orders , "cancelled_orders" : cancelled_orders}
 
 
 def get_order_items(db: Session, order_id: UUID):
