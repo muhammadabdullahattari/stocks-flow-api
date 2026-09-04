@@ -1,7 +1,7 @@
 [project]
-name = "docker-learn"
+name = "stock-flow"
 version = "0.1.0"
-description = "Add your description here"
+description = "Stock Flow API"
 readme = "README.md"
 authors = [
     { name = "Muhammad Abdullah", email = "callmeab1182002@gmail.com" }
@@ -19,11 +19,11 @@ dependencies = [
     "sqlalchemy>=2.0.52",
     "uvicorn>=0.52.4",
     "supabase>=2.4.0",
-    "python-dotenv==1.0.0", 
+    "python-dotenv==1.0.0",
 ]
 
-[project.scripts]
-docker-learn = "docker_learn:main"
+[tool.uv]
+package = false
 
 [build-system]
 requires = ["uv_build>=0.12.7,<0.13.0"]
@@ -34,5 +34,5 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
-    "python-dotenv>=1.0.0",
+    "python-dotenv>=0.0.0",
 ]

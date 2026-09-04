@@ -25,6 +25,9 @@ class SupplierBase(BaseModel):
     @field_validator("phone")
     @classmethod
     def validate_phone_number(cls, value: str) -> str:
+        
+        if value is None:
+            return None
         value = value.strip()
 
         if not value.isdigit():

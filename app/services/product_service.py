@@ -4,7 +4,7 @@ from uuid import UUID
 from app.models.product import Product
 from app.models.category import Category
 from app.models.inventory import Inventory
-from app.schemas.product import ProductCreate, ProductUpdate
+from app.schemas.product import ProductCreate, ProductUpdate , ProductSearchResponse , ProductResponse
 from app.services.category_service import get_category_by_id
 from fastapi import HTTPException, status
 from decimal import Decimal
@@ -173,4 +173,56 @@ def deactivate_product(db: Session, product_id: UUID) -> Product:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to deactivate product"
+        )
+        
+        
+def search_products_by_name(db: Session,search_query: str,skip: int = 0,limit: int = 100):
+
+    try:
+        search_pattern = f"%{search_query}%"
+        query = db.query(Product).filter(Product.name.ilike(search_pattern),  Product.is_active == True  )
+        total = query.count()
+        products = query.order_by(Product.name).offset(skip).limit(limit).all()
+        
+        return {"total": total,"items": products,"skip": skip,"limit": limit,"search_query": search_query}
+        
+    except SQLAlchemyError as e:
+        logger.error(f"Database error searching products: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="Failed to search products")
+
+
+def search_products_advanced(db: Session,search_query: str,category_id: UUID = None,min_price: Decimal = None,
+                             max_price: Decimal = None,skip: int = 0,limit: int = 100):
+    
+    try:
+        search_pattern = f"%{search_query}%"
+        
+        query = db.query(Product).filter(Product.name.ilike(search_pattern),Product.is_active == True)
+        
+        if category_id:
+            query = query.filter(Product.category_id == category_id)
+        
+        if min_price is not None:
+            query = query.filter(Product.price >= min_price)
+        
+        if max_price is not None:
+            query = query.filter(Product.price <= max_price)
+        
+        total = query.count()
+        products = query.order_by(Product.name).offset(skip).limit(limit).all()
+        
+        return {
+            "total": total,
+            "items": products,
+            "skip": skip,
+            "limit": limit,
+            "search_query": search_query,
+            "filters": {"category_id": category_id,"min_price": min_price,"max_price": max_price}
+        }
+        
+    except SQLAlchemyError as e:
+        logger.error(f"Database error in advanced search: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search products"
         )

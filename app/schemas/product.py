@@ -67,3 +67,14 @@ class ProductListResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+    
+class ProductSearchResponse(BaseModel):
+    id: UUID
+    name: str
+    price: Decimal
+    sku: str
+    category_id: UUID
+    status: str
+    is_active: bool
+    
+    model_config = {"from_attributes": True}

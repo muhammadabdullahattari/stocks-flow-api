@@ -14,6 +14,8 @@ from .product_service import (
     get_available_products,
     update_product,
     deactivate_product,
+    search_products_advanced,
+    search_products_by_name,
 )
 from .inventory_service import (
     get_inventory_by_product_id,
@@ -96,5 +98,7 @@ __all__ = [
     "receive_po_item",
     "cancel_purchase_order",
     "get_po_items",
-    "get_pending_shipments"
+    "get_pending_shipments",
+    "search_products_advanced",
+    "search_products_by_name"
 ]

@@ -34,4 +34,5 @@ app.include_router(PurchaseOrderrouter)
 
 @app.get("/")
 def root():
+    print("check yml")
     return {"message": "API is running"}
