@@ -27,6 +27,23 @@ def invalidate_product_cache():
     _PRODUCT_AVAILABLE_CACHE.clear()
     _PRODUCT_LIST_CACHE.clear()
 
+def _product_to_dict(p: "Product") -> dict:
+    """Convert a Product ORM row to a plain dict so cached results are session-free."""
+    return {
+        "id": p.id,
+        "name": p.name,
+        "sku": p.sku,
+        "description": p.description,
+        "category_id": p.category_id,
+        "price": p.price,
+        "cost": p.cost,
+        "created_by": p.created_by,
+        "status": p.status,
+        "is_active": p.is_active,
+        "created_at": p.created_at,
+        "updated_at": p.updated_at,
+    }
+
 def generate_sku(category: Category, name: str) -> str:
     category_part = "".join(c for c in category.name.upper() if c.isalnum())[:3]
     name_part = "".join(c for c in name.upper() if c.isalnum())[:3]
@@ -102,7 +119,7 @@ def get_all_products(db: Session,skip: int = 0,limit: int = 100,category_id: UUI
     total = query.count()
     products = query.offset(skip).limit(limit).all()
     
-    result = {"total": total, "items": products, "skip": skip, "limit": limit}
+    result = {"total": total, "items": [_product_to_dict(p) for p in products], "skip": skip, "limit": limit}
     _PRODUCT_LIST_CACHE[cache_key] = (now, result)
     return result
 
@@ -124,7 +141,7 @@ def get_available_products(db: Session, skip: int = 0, limit: int = 100):
     total = query.count()
     products = query.offset(skip).limit(limit).all()
     
-    result = {"total": total, "items": products, "skip": skip, "limit": limit}
+    result = {"total": total, "items": [_product_to_dict(p) for p in products], "skip": skip, "limit": limit}
     _PRODUCT_AVAILABLE_CACHE[cache_key] = (now, result)
     return result
 
