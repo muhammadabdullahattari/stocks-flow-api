@@ -8,7 +8,16 @@ from fastapi import HTTPException, status
 import logging
 import re
 
+from datetime import datetime, timezone, timedelta
+
 logger = logging.getLogger(__name__)
+
+# In-memory category cache for heavy read load (TTL: 60s)
+_CATEGORY_CACHE = {}
+
+def invalidate_category_cache():
+    global _CATEGORY_CACHE
+    _CATEGORY_CACHE.clear()
 
 def generate_slug(name: str) -> str:
     slug = name.strip().lower()
@@ -37,6 +46,7 @@ def create_category(db: Session, category_data: CategoryCreate) -> Category:
         db.commit()
         db.refresh(category)
         
+        invalidate_category_cache()
         logger.info(f"Category created: {category.id}")
         return category
         
@@ -56,7 +66,14 @@ def get_category_by_id(db: Session, category_id: UUID) -> Category:
     return category
 
 
-def get_all_categories(db: Session,skip: int = 0,limit: int = 100,is_active: bool = None):
+def get_all_categories(db: Session, skip: int = 0, limit: int = 100, is_active: bool = None):
+    cache_key = (skip, limit, is_active)
+    now = datetime.now(timezone.utc)
+    if cache_key in _CATEGORY_CACHE:
+        cached_time, cached_result = _CATEGORY_CACHE[cache_key]
+        if now - cached_time < timedelta(seconds=60):
+            return cached_result
+
     query = db.query(Category)
     
     if is_active is not None:
@@ -65,7 +82,9 @@ def get_all_categories(db: Session,skip: int = 0,limit: int = 100,is_active: boo
     total = query.count()
     categories = query.offset(skip).limit(limit).all()
     
-    return {"total": total, "items": categories, "skip": skip, "limit": limit}
+    result = {"total": total, "items": categories, "skip": skip, "limit": limit}
+    _CATEGORY_CACHE[cache_key] = (now, result)
+    return result
 
 
 def update_category(db: Session,category_id: UUID,category_data: CategoryUpdate) -> Category:
@@ -105,6 +124,7 @@ def update_category(db: Session,category_id: UUID,category_data: CategoryUpdate)
         db.commit()
         db.refresh(category)
     
+        invalidate_category_cache()
         logger.info(f"Category updated: {category.id}")
         return category
         
@@ -132,6 +152,7 @@ def delete_category(db: Session, category_id: UUID) -> bool:
         db.delete(category)
         db.commit()
         
+        invalidate_category_cache()
         logger.info(f"Category deleted: {category_id}")
         return True
         

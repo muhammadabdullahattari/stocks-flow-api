@@ -22,11 +22,27 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 def verify_supabase_token(token: str) -> dict:
-    
+    # 1. Attempt fast local cryptographic JWT verification (0.1ms, avoids external HTTP roundtrip)
+    if getattr(settings, "SUPABASE_JWT_SECRET", None):
+        try:
+            payload = jwt.decode(
+                token,
+                settings.SUPABASE_JWT_SECRET,
+                algorithms=["HS256"],
+                options={"verify_aud": False}
+            )
+            if payload and "sub" in payload:
+                return {
+                    "sub": str(payload["sub"]),
+                    "email": payload.get("email"),
+                    "user_metadata": payload.get("user_metadata", {}) or {}
+                }
+        except Exception:
+            # Fallback to Supabase API if local signature verification fails
+            pass
+
     try:
         response = supabase.auth.get_user(token)        
-        logger.info(f"Supabase response type: {type(response)}")
-        logger.info(f"Supabase response: {response}")
         
         if hasattr(response, 'user'):
             user = response.user
@@ -36,8 +52,6 @@ def verify_supabase_token(token: str) -> dict:
         if not user or not hasattr(user, 'id'):
             logger.error(f"Invalid user object: {user}")
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,detail="Invalid or expired token")
-        
-        logger.info(f"Token verified for user: {user.id}")
         
         return {
             "sub": str(user.id),
