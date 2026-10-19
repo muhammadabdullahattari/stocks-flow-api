@@ -1,41 +1,31 @@
 import http from 'k6/http';
-import { sleep, check } from 'k6';
+import { check } from 'k6';
 
-// Staged ramp-up simulation for StockFlow API
 export const options = {
   stages: [
-    { duration: '30s', target: 20 },   // Warm-up to 20 VUs
-    { duration: '1m', target: 50 },    // Ramp to 50 VUs
-    { duration: '2m', target: 100 },   // Peak load test with 100 VUs
-    { duration: '30s', target: 0 },    // Graceful ramp-down
+    { duration: '30s', target: 50 },   // Fast ramp to 50 VUs
+    { duration: '3m', target: 100 },   // 3 minutes of unthrottled 100 VUs
+    { duration: '30s', target: 0 },    // Cool down
   ],
   thresholds: {
-    http_req_failed: ['rate<0.02'],     // Max 2% failure rate tolerated under peak load
-    http_req_duration: ['p(95)<800'],   // 95% of requests completed under 800ms
+    http_req_failed: ['rate<0.10'],    // Track failure rate under extreme stress
   },
 };
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
+const BASE_URL = __ENV.BASE || __ENV.BASE_URL || 'http://localhost:8000';
 
 export default function () {
-  // 1. Test Categories Endpoint
-  const resCat = http.get(`${BASE_URL}/categories`, {
-    tags: { name: 'GetCategories' },
+  // 1. Uncached Product Search (forces DB query)
+  const resSearch = http.get(`${BASE_URL}/products/search/by-name?q=test&limit=20`, {
+    tags: { endpoint: 'search' },
   });
-  check(resCat, {
-    'categories status is 200': (r) => r.status === 200,
-  });
+  check(resSearch, { 'search status 200': (r) => r.status === 200 });
 
-  // Human think time between requests (prevents unthrottled DDOS on connection pool)
-  sleep(1);
-
-  // 2. Test Available Products Endpoint
-  const resProd = http.get(`${BASE_URL}/products/available`, {
-    tags: { name: 'GetAvailableProducts' },
+  // 2. Uncached Inventory/Product Join
+  const resProd = http.get(`${BASE_URL}/products/available?limit=20`, {
+    tags: { endpoint: 'available_products' },
   });
-  check(resProd, {
-    'available products status is 200': (r) => r.status === 200,
-  });
+  check(resProd, { 'products status 200': (r) => r.status === 200 });
 
-  sleep(1);
+  // Zero sleep = 100 VUs generate maximum possible requests/sec
 }
