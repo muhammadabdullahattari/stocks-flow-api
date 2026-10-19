@@ -158,10 +158,7 @@ class TestPurchaseOrderEndpoints:
     """Test endpoints in app/routers/purchase_order.py."""
 
     def test_create_po_business_endpoint(self, test_client, business_headers, test_supplier, test_product):
-        """
-        Test POST /purchase-orders endpoint.
-        Exposes PurchaseOrderResponse serialization 500 error in app code due to 'items' vs 'purchase_order_items' mismatch.
-        """
+        """Test POST /purchase-orders endpoint creates a PO successfully."""
         payload = {
             "supplier_id": test_supplier["id"],
             "items": [
@@ -170,7 +167,11 @@ class TestPurchaseOrderEndpoints:
             "notes": "Test PO",
         }
         response = test_client.post("/purchase-orders", json=payload, headers=business_headers)
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_201_CREATED, response.text
+        data = response.json()
+        assert "id" in data
+        assert data["notes"] == "Test PO"
+        assert len(data["items"]) == 1
 
     def test_create_po_inactive_supplier(self, test_client, business_headers, test_product):
         """Test creating PO with inactive supplier returns 400 Bad Request."""
@@ -237,13 +238,13 @@ class TestPurchaseOrderEndpoints:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_purchase_order_business(self, test_client, business_headers, db_po):
-        """
-        Test business user GET /purchase-orders/{po_id}.
-        Exposes PurchaseOrderResponse ValidationError in app code due to schema mismatch.
-        """
+        """Test business user GET /purchase-orders/{po_id} returns PO details."""
         po, _ = db_po
-        with pytest.raises(ValidationError):
-            test_client.get(f"/purchase-orders/{po.id}", headers=business_headers)
+        response = test_client.get(f"/purchase-orders/{po.id}", headers=business_headers)
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["id"] == str(po.id)
+        assert "items" in data
 
     def test_get_purchase_order_not_found(self, test_client, business_headers):
         """Test getting non-existent PO returns 404."""
@@ -266,22 +267,20 @@ class TestPurchaseOrderEndpoints:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_po_business(self, test_client, business_headers, db_po):
-        """
-        Test business user PUT /purchase-orders/{po_id}.
-        Exposes PurchaseOrderResponse serialization 500 error in app code.
-        """
+        """Test business user PUT /purchase-orders/{po_id} updates PO details."""
         po, _ = db_po
         response = test_client.put(f"/purchase-orders/{po.id}", json={"notes": "Updated note"}, headers=business_headers)
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["notes"] == "Updated note"
 
     def test_update_po_status_business(self, test_client, business_headers, db_po):
-        """
-        Test business user PUT /purchase-orders/{po_id}/status.
-        Exposes PurchaseOrderResponse serialization 500 error in app code.
-        """
+        """Test business user PUT /purchase-orders/{po_id}/status updates PO status."""
         po, _ = db_po
         response = test_client.put(f"/purchase-orders/{po.id}/status", json={"status": "pending"}, headers=business_headers)
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["status"] == "pending"
 
     def test_update_po_status_missing_status(self, test_client, business_headers, db_po):
         """Test updating PO status with empty status returns 400 Bad Request."""
@@ -326,13 +325,12 @@ class TestPurchaseOrderEndpoints:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_cancel_po_business(self, test_client, business_headers, db_po):
-        """
-        Test business user PATCH /purchase-orders/{po_id}/cancel.
-        Exposes PurchaseOrderResponse serialization 500 error in app code.
-        """
+        """Test business user PATCH /purchase-orders/{po_id}/cancel cancels PO."""
         po, _ = db_po
         response = test_client.patch(f"/purchase-orders/{po.id}/cancel", headers=business_headers)
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["status"] == "cancelled"
 
     def test_cancel_po_customer_forbidden(self, test_client, customer_headers, db_po):
         """Test customer user cannot cancel PO."""

@@ -74,20 +74,20 @@ def get_po_items_endpoint(po_id: UUID,current_user: User = Depends(get_current_b
     return {"po_id": po_id,"items": items}
 
 
-# @router.put("/{po_id}",response_model=PurchaseOrderResponse,summary="Update Purchase Order",
-#             description="Update PO details (BUSINESS only, draft only)")
-# def update_existing_po(po_id: UUID,po_data: PurchaseOrderUpdate,current_user: User = Depends(get_current_business_user),
-#     db: Session = Depends(get_db)):
+@router.put("/{po_id}",response_model=PurchaseOrderResponse,summary="Update Purchase Order",
+            description="Update PO details (BUSINESS only, draft only)")
+def update_existing_po(po_id: UUID,po_data: PurchaseOrderUpdate,current_user: User = Depends(get_current_business_user),
+    db: Session = Depends(get_db)):
 
-#     try:
-#         po = update_purchase_order(db, po_id, po_data)
-#         return PurchaseOrderResponse.model_validate(po)
+    try:
+        po = update_purchase_order(db, po_id, po_data)
+        return PurchaseOrderResponse.model_validate(po)
         
-#     except HTTPException:
-#         raise
-#     except Exception as e:
-#         logger.error(f"Error updating PO: {str(e)}")
-#         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="Failed to update purchase order")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating PO: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,detail="Failed to update purchase order")
 
 
 @router.put("/{po_id}/status",response_model=PurchaseOrderResponse,summary="Update PO Status",description="Update purchase order status through workflow (BUSINESS only)")

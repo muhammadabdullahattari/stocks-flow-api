@@ -91,8 +91,14 @@ def update_category(db: Session,category_id: UUID,category_data: CategoryUpdate)
                 suffix += 1
                 slug = f"{base_slug}-{suffix}"
 
-            update_data["slug"] = slug
-            
+        if "slug" in update_data:
+            existing_slug = db.query(Category).filter(Category.slug == update_data["slug"], Category.id != category_id).first()
+            if existing_slug:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Category with slug '{update_data['slug']}' already exists"
+                )
+
         for key, value in update_data.items():
             setattr(category, key, value)
         

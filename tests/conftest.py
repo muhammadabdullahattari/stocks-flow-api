@@ -28,6 +28,65 @@ def test_db_engine():
     engine.dispose()
 
 
+MOCKED_SUPABASE_USERS = {}
+
+@pytest.fixture(autouse=True)
+def mock_supabase_auth_service(monkeypatch):
+    """
+    Mock Supabase Auth calls so test runs do not hit external network rate limits.
+    """
+    class MockUser:
+        def __init__(self, user_id=None, email=None, user_metadata=None):
+            self.id = user_id or str(uuid4())
+            self.email = email
+            self.user_metadata = user_metadata or {}
+
+    class MockSession:
+        def __init__(self, access_token, refresh_token):
+            self.access_token = access_token
+            self.refresh_token = refresh_token
+
+    class MockAuthResponse:
+        def __init__(self, user, session=None):
+            self.user = user
+            self.session = session
+
+    def mock_admin_create_user(params):
+        email = params.get("email")
+        user_id = str(uuid4())
+        MOCKED_SUPABASE_USERS[email] = user_id
+        return MockAuthResponse(user=MockUser(user_id=user_id, email=email, user_metadata=params.get("user_metadata")))
+
+    def mock_sign_in_with_password(credentials):
+        email = credentials.get("email")
+        password = credentials.get("password")
+        if password == "WrongPassword123!":
+            raise Exception("Invalid login credentials")
+        user_id = MOCKED_SUPABASE_USERS.get(email, str(uuid4()))
+        session = MockSession(access_token=f"token_{user_id}", refresh_token=f"refresh_{uuid4().hex}")
+        return MockAuthResponse(user=MockUser(user_id=user_id, email=email), session=session)
+
+    def mock_get_user(token):
+        if token and token.startswith("token_"):
+            user_id = token.replace("token_", "")
+        else:
+            user_id = str(uuid4())
+        return MockAuthResponse(user=MockUser(user_id=user_id))
+
+    def mock_refresh_session(token):
+        user_id = str(uuid4())
+        session = MockSession(access_token=f"token_{user_id}", refresh_token=f"new_refresh_{uuid4().hex}")
+        return MockAuthResponse(user=MockUser(user_id=user_id), session=session)
+
+    try:
+        monkeypatch.setattr("app.core.supabase_client.supabase_service.auth.admin.create_user", mock_admin_create_user)
+        monkeypatch.setattr("app.core.supabase_client.supabase_service.auth.sign_in_with_password", mock_sign_in_with_password)
+        monkeypatch.setattr("app.core.supabase_client.supabase.auth.get_user", mock_get_user)
+        monkeypatch.setattr("app.core.supabase_client.supabase_service.auth.refresh_session", mock_refresh_session)
+    except Exception:
+        pass
+
+
 @pytest.fixture(scope="function")
 def db_session(test_db_engine):
     """
@@ -73,15 +132,74 @@ def test_client(db_session):
 
     app.dependency_overrides.clear()
 
+@pytest.fixture(autouse=True)
+def mock_supabase_token_verifier(monkeypatch):
+    """Dynamically resolve any token in format 'token_<user_id>' to user_id."""
+    from fastapi import HTTPException, status
+    def mock_verify_supabase_token(token: str) -> dict:
+        if token == "invalid_token" or not token or not token.startswith("token_"):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        user_id = token.replace("token_", "")
+        return {"sub": user_id, "email": f"{user_id}@example.com"}
+
+    monkeypatch.setattr("app.dependencies.auth.verify_supabase_token", mock_verify_supabase_token)
+
+
+@pytest.fixture
+def custom_customer_user(db_session):
+    unique = uuid4().hex[:8]
+    user = User(
+        id=uuid4(),
+        username=f"cust_{unique}",
+        name="Customer User",
+        first_name="Customer",
+        last_name="User",
+        email=f"cust_{unique}@example.com",
+        role="CUSTOMER",
+        is_active=True,
+        is_verified=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def custom_business_user(db_session):
+    unique = uuid4().hex[:8]
+    user = User(
+        id=uuid4(),
+        username=f"biz_{unique}",
+        name="Business User",
+        first_name="Business",
+        last_name="User",
+        email=f"biz_{unique}@example.com",
+        role="BUSINESS",
+        is_active=True,
+        is_verified=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def customer_headers(custom_customer_user):
+    return {"Authorization": f"Bearer token_{custom_customer_user.id}"}
+
+
+@pytest.fixture
+def business_headers(custom_business_user):
+    return {"Authorization": f"Bearer token_{custom_business_user.id}"}
+
+
 @pytest.fixture
 def test_customer_data():
     """
     Generate unique customer credentials for every test.
-
-    This prevents Supabase Auth users from conflicting when
-    pytest is executed multiple times.
     """
-
     unique = uuid4().hex[:8]
 
     return {

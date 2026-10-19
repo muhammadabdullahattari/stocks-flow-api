@@ -36,3 +36,7 @@ class PurchaseOrder(Base):
         back_populates="purchase_order",
         cascade="all, delete-orphan"
     )
+
+    @property
+    def items(self):
+        return self.purchase_order_items

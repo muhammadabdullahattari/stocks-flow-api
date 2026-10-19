@@ -24,3 +24,7 @@ class Order(Base):
 
     customer: Mapped["User"] = relationship("User", foreign_keys=[customer_id])
     order_items: Mapped[list["OrderItem"]] = relationship("OrderItem",back_populates="order",cascade="all, delete-orphan")
+
+    @property
+    def items(self):
+        return self.order_items

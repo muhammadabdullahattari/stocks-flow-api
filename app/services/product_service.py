@@ -131,6 +131,13 @@ def update_product(db: Session,product_id: UUID,product_data: ProductUpdate,user
 
             update_data["sku"] = sku
         
+        if "sku" in update_data:
+            existing_sku = db.query(Product).filter(Product.sku == update_data["sku"], Product.id != product_id).first()
+            if existing_sku:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Product with SKU '{update_data['sku']}' already exists"
+                )
 
         for key, value in update_data.items():
             setattr(product, key, value)

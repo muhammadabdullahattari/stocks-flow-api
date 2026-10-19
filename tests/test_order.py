@@ -151,11 +151,7 @@ class TestOrderEndpoints:
     """Test endpoints in app/routers/order.py."""
 
     def test_create_order_customer_endpoint(self, test_client, customer_headers, test_product_with_stock):
-        """
-        Test POST /orders endpoint.
-        Exposes application bug where OrderResponse expects 'items' but Order model provides 'order_items',
-        causing OrderResponse.model_validate(order) to raise a 500 error in production code.
-        """
+        """Test POST /orders endpoint creates an order successfully."""
         payload = {
             "items": [
                 {"product_id": test_product_with_stock["id"], "quantity": 2}
@@ -163,7 +159,11 @@ class TestOrderEndpoints:
             "notes": "Deliver soon",
         }
         response = test_client.post("/orders", json=payload, headers=customer_headers)
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_201_CREATED, response.text
+        data = response.json()
+        assert "id" in data
+        assert data["notes"] == "Deliver soon"
+        assert len(data["items"]) == 1
 
     def test_create_order_insufficient_stock(self, test_client, customer_headers, test_product_with_stock):
         """Test order creation fails when requested stock exceeds available stock."""
@@ -235,25 +235,25 @@ class TestOrderEndpoints:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_order_details_own_customer(self, test_client, customer_headers, db_order):
-        """
-        Test GET /orders/{order_id} endpoint.
-        Exposes OrderResponse serialization ValidationError in app code due to schema mismatch.
-        """
-        with pytest.raises(ValidationError):
-            test_client.get(f"/orders/{db_order.id}", headers=customer_headers)
+        """Test GET /orders/{order_id} endpoint returns order details for owner."""
+        response = test_client.get(f"/orders/{db_order.id}", headers=customer_headers)
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["id"] == str(db_order.id)
+        assert "items" in data
 
     def test_get_order_details_other_customer_forbidden(self, test_client, customer_2_headers, db_order):
-        """Test customer cannot view another customer's order details (authorization check runs before serialization)."""
+        """Test customer cannot view another customer's order details."""
         response = test_client.get(f"/orders/{db_order.id}", headers=customer_2_headers)
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_get_order_details_business(self, test_client, business_headers, db_order):
-        """
-        Test business user GET /orders/{order_id}.
-        Exposes OrderResponse serialization ValidationError in app code due to schema mismatch.
-        """
-        with pytest.raises(ValidationError):
-            test_client.get(f"/orders/{db_order.id}", headers=business_headers)
+        """Test business user GET /orders/{order_id} returns order details."""
+        response = test_client.get(f"/orders/{db_order.id}", headers=business_headers)
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["id"] == str(db_order.id)
+        assert "items" in data
 
     def test_get_order_details_not_found(self, test_client, customer_headers):
         """Test getting non-existent order details returns 404."""
@@ -274,16 +274,15 @@ class TestOrderEndpoints:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_update_order_status_business(self, test_client, business_headers, db_order):
-        """
-        Test PUT /orders/{order_id}/status endpoint.
-        Exposes OrderResponse serialization 500 error in app code.
-        """
+        """Test PUT /orders/{order_id}/status endpoint updates status."""
         response = test_client.put(
             f"/orders/{db_order.id}/status",
             json={"status": "confirmed", "notes": "Confirmed order"},
             headers=business_headers,
         )
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["status"] == "confirmed"
 
     def test_update_order_status_invalid_status_body(self, test_client, business_headers, db_order):
         """Test updating order status with empty status returns 400 Bad Request."""
@@ -295,7 +294,7 @@ class TestOrderEndpoints:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_update_order_status_customer_forbidden(self, test_client, customer_headers, db_order):
-        """Test customer user cannot update order status (authorization check runs before serialization)."""
+        """Test customer user cannot update order status."""
         response = test_client.put(
             f"/orders/{db_order.id}/status",
             json={"status": "confirmed"},
@@ -304,12 +303,11 @@ class TestOrderEndpoints:
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_cancel_order_own_customer(self, test_client, customer_headers, db_order):
-        """
-        Test PATCH /orders/{order_id}/cancel endpoint.
-        Exposes OrderResponse serialization 500 error in app code.
-        """
+        """Test PATCH /orders/{order_id}/cancel endpoint cancels order."""
         response = test_client.patch(f"/orders/{db_order.id}/cancel", headers=customer_headers)
-        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert response.status_code == status.HTTP_200_OK, response.text
+        data = response.json()
+        assert data["status"] == "cancelled"
 
     def test_cancel_order_other_customer_forbidden(self, test_client, customer_2_headers, db_order):
         """Test customer cannot cancel another customer's order (authorization check runs first)."""

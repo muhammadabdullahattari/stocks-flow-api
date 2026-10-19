@@ -75,7 +75,7 @@ class TestSupplierEndpoints:
         payload = {
             "name": f"Supplier {uuid4().hex[:6]}",
             "email": f"sup_{uuid4().hex[:6]}@example.com",
-            "phone": "1234567890",
+            "phone": "03001234567",
             "contact_person": "Jane Doe",
             "is_active": True,
         }

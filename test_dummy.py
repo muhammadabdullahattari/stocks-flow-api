@@ -44,18 +44,3 @@ def logout_all_devices(current_user: User = Depends(get_current_user),db: Sessio
         db.rollback()
         logger.warning(f"Failed to clear all sessions: {str(e)}")
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
