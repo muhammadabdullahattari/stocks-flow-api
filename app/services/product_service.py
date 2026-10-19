@@ -8,11 +8,24 @@ from app.schemas.product import ProductCreate, ProductUpdate , ProductSearchResp
 from app.services.category_service import get_category_by_id
 from fastapi import HTTPException, status
 from decimal import Decimal
+from datetime import datetime, timezone, timedelta
 import logging
 import random
 import string
 
 logger = logging.getLogger(__name__)
+
+# In-memory product caches for heavy read load
+# get_available_products: TTL 15s (inventory changes frequently)
+_PRODUCT_AVAILABLE_CACHE: dict = {}
+# get_all_products: TTL 30s (admin list, changes less often)
+_PRODUCT_LIST_CACHE: dict = {}
+
+def invalidate_product_cache():
+    """Clear all product caches. Call on any write (create/update/deactivate)."""
+    global _PRODUCT_AVAILABLE_CACHE, _PRODUCT_LIST_CACHE
+    _PRODUCT_AVAILABLE_CACHE.clear()
+    _PRODUCT_LIST_CACHE.clear()
 
 def generate_sku(category: Category, name: str) -> str:
     category_part = "".join(c for c in category.name.upper() if c.isalnum())[:3]
@@ -42,6 +55,7 @@ def create_product(db: Session,product_data: ProductCreate,user_id: UUID) -> Pro
         db.refresh(product)
         
         logger.info(f"Product created: {product.id}")
+        invalidate_product_cache()
         return product
         
     except HTTPException:
@@ -67,6 +81,13 @@ def get_product_by_id(db: Session, product_id: UUID, check_active: bool = False)
 
 
 def get_all_products(db: Session,skip: int = 0,limit: int = 100,category_id: UUID = None,is_active: bool = None,status: str = None):
+    cache_key = (skip, limit, str(category_id), is_active, status)
+    now = datetime.now(timezone.utc)
+    if cache_key in _PRODUCT_LIST_CACHE:
+        cached_time, cached_result = _PRODUCT_LIST_CACHE[cache_key]
+        if now - cached_time < timedelta(seconds=30):
+            return cached_result
+
     query = db.query(Product)
     
     if category_id:
@@ -81,10 +102,19 @@ def get_all_products(db: Session,skip: int = 0,limit: int = 100,category_id: UUI
     total = query.count()
     products = query.offset(skip).limit(limit).all()
     
-    return {"total": total, "items": products, "skip": skip, "limit": limit}
+    result = {"total": total, "items": products, "skip": skip, "limit": limit}
+    _PRODUCT_LIST_CACHE[cache_key] = (now, result)
+    return result
 
 
 def get_available_products(db: Session, skip: int = 0, limit: int = 100):
+    cache_key = (skip, limit)
+    now = datetime.now(timezone.utc)
+    if cache_key in _PRODUCT_AVAILABLE_CACHE:
+        cached_time, cached_result = _PRODUCT_AVAILABLE_CACHE[cache_key]
+        if now - cached_time < timedelta(seconds=15):
+            return cached_result
+
     query = db.query(Product).join(Inventory).filter(
         Product.is_active == True,
         Product.status == "active",
@@ -94,7 +124,9 @@ def get_available_products(db: Session, skip: int = 0, limit: int = 100):
     total = query.count()
     products = query.offset(skip).limit(limit).all()
     
-    return {"total": total, "items": products, "skip": skip, "limit": limit}
+    result = {"total": total, "items": products, "skip": skip, "limit": limit}
+    _PRODUCT_AVAILABLE_CACHE[cache_key] = (now, result)
+    return result
 
 
 def update_product(db: Session,product_id: UUID,product_data: ProductUpdate,user_id: UUID) -> Product:
@@ -146,6 +178,7 @@ def update_product(db: Session,product_id: UUID,product_data: ProductUpdate,user
         db.refresh(product)
         
         logger.info(f"Product updated: {product.id}")
+        invalidate_product_cache()
         return product
         
     except HTTPException:
@@ -170,6 +203,7 @@ def deactivate_product(db: Session, product_id: UUID) -> Product:
         db.refresh(product)
         
         logger.info(f"Product deactivated: {product.id}")
+        invalidate_product_cache()
         return product
         
     except HTTPException:
